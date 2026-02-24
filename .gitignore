@@ -6,4 +6,3 @@ build/*
 main.exe
 main
 lexer.c
-lexer.h
