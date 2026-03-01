@@ -1,4 +1,4 @@
-proc main(argc: u64, argv: []string) -> (result: Result) {
+proc main(argc: u64, argv: []string) {
     let a: u32 = +5;
     let b: u32 = -5;
     let c: f32 = -5.23;
@@ -6,5 +6,10 @@ proc main(argc: u64, argv: []string) -> (result: Result) {
     let procer: u32 = 3;
     debug_print("string");
     let f: f32 = -51.23;
+    if a >= b {
+        debug_print("a is greater than b");
+    } else if !(a > b) {
+        debug_print("a is not greater than b")
+    }
     debug_print("this is a string");
 }

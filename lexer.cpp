@@ -1,88 +1,241 @@
-#include <stdio.h>
-#include <string>
 #include <iostream>
+#include <vector>
+#include <fstream>
+#include <unordered_map>
+#include <cctype>
+#include <utility>
+#include <stdio.h>
 
-enum TokenKind {
-    Tok_Illegal,
-    Tok_EndOfFile,
+#include "lexer.h"
 
-    Tok_Identifier,
-    Tok_Number,
-    Tok_String,
+bool isLetter(char c) {
+    return (c >= 'a' && c <= 'z') ||
+        (c >= 'A' && c <= 'Z');
+}
 
-    Tok_Keyword,
-    Tok_type,
-    Tok_CompEqual,
-    Tok_CompLessThan,
-    Tok_CompGreaterThan,
-    Tok_CompLessThanEqual,
-    Tok_CompGreaterThanEqual,
-    Tok_CompNotEqual,
-    Tok_Negate,
+bool isDigit(char c) {
+    return (c >= '0' && c <= '9');
+}
 
-    Tok_LParen,     // (
-    Tok_RParen,     // )
-    Tok_LBrace,     // {
-    Tok_RBrace,     // }
-    Tok_LBracket,   // [
-    Tok_RBracket,   // ]
-    Tok_Colon,      // :
-    Tok_Comma,      // ,
-    Tok_Semicolon,  // ;
-    Tok_Equal,      // =
-    Tok_At,
-    Tok_Star,
-    Tok_Add,
-    Tok_Sub,
-    Tok_Dquote
+bool isIdentifierStart(char c) {
+    return isLetter(c) || c == '_';
+}
+
+bool isIdentifierChar(char c) {
+    return  isIdentifierStart(c) || isDigit(c);
+}
+
+std::unordered_map<std::string, TokenKind> keywordTable = {
+    {"proc", Tok_proc},
+    {"include", Tok_include},
+    {"let", Tok_let},
+    {"debug_print", Tok_debug_print},
+    {"struct", Tok_struct},
+    {"enum", Tok_enum},
+    {"if", Tok_if},
+    {"else", Tok_else},
+    {"while", Tok_while},
+    {"for", Tok_for},
+    {"do", Tok_do},
+    {"u8", Tok_u8},
+    {"u16", Tok_u16},
+    {"u32", Tok_u32},
+    {"u64", Tok_u64},
+    {"i8", Tok_i8},
+    {"i16", Tok_i16},
+    {"i32", Tok_i32},
+    {"i64", Tok_i64},
+    {"f32", Tok_f32},
+    {"f64", Tok_f64},
+    {"char8", Tok_char8},
+    {"char16", Tok_char16},
+    {"char32", Tok_char32},
 };
 
-enum TypeKind {
-    Type_u8,
-    Type_u16,
-    Type_u32,
-    Type_u64,
-    Type_i8,
-    Type_i16,
-    Type_i32,
-    Type_i64,
-    Type_f32,
-    Type_f64,
-    Type_char8,
-    Type_char16,
-    Type_char32,
-};
+void lexer_print_token(Token t)
+{
+    switch(t.kind) {
+    case Tok_Illegal             : printf("Tok_Illegal\n"); break;
+    case Tok_EndOfFile           : printf("Tok_EndOfFile\n"); break;
+    case Tok_Identifier          : printf("Tok_Identifier\n"); break;
+    case Tok_Number              : printf("Tok_Number\n"); break;
+    case Tok_String              : printf("Tok_String\n"); break;
+    case Tok_CompEqual           : printf("Tok_CompEqual\n"); break;
+    case Tok_CompLessThan        : printf("Tok_CompLessThan\n"); break;
+    case Tok_CompGreaterThan     : printf("Tok_CompGreaterThan\n"); break;
+    case Tok_CompLessThanEqual   : printf("Tok_CompLessThanEqual\n"); break;
+    case Tok_CompGreaterThanEqual: printf("Tok_CompGreaterThanEqual\n"); break;
+    case Tok_CompNotEqual        : printf("Tok_CompNotEqual\n"); break;
+    case Tok_Negate              : printf("Tok_Negate\n"); break;
+    case Tok_LParen              : printf("Tok_LParen\n"); break;
+    case Tok_RParen              : printf("Tok_RParen\n"); break;
+    case Tok_LBrace              : printf("Tok_LBrace\n"); break;
+    case Tok_RBrace              : printf("Tok_RBrace\n"); break;
+    case Tok_LBracket            : printf("Tok_LBracket\n"); break;
+    case Tok_RBracket            : printf("Tok_RBracket\n"); break;
+    case Tok_Colon               : printf("Tok_Colon\n"); break;
+    case Tok_Comma               : printf("Tok_Comma\n"); break;
+    case Tok_Semicolon           : printf("Tok_Semicolon\n"); break;
+    case Tok_Dquote              : printf("Tok_Dquote\n"); break;
+    case Tok_Equal               : printf("Tok_Equal\n"); break;
+    case Tok_At                  : printf("Tok_At\n"); break;
+    case Tok_Star                : printf("Tok_Star\n"); break;
+    case Tok_Add                 : printf("Tok_Add\n"); break;
+    case Tok_Sub                 : printf("Tok_Sub\n"); break;
+    case Tok_Mul                 : printf("Tok_Mul\n"); break;
+    case Tok_Div                 : printf("Tok_Div\n"); break;
+    case Tok_u8                  : printf("Tok_u8\n"); break;
+    case Tok_u16                 : printf("Tok_u16\n"); break;
+    case Tok_u32                 : printf("Tok_u32\n"); break;
+    case Tok_u64                 : printf("Tok_u64\n"); break;
+    case Tok_i8                  : printf("Tok_i8\n"); break;
+    case Tok_i16                 : printf("Tok_i16\n"); break;
+    case Tok_i32                 : printf("Tok_i32\n"); break;
+    case Tok_i64                 : printf("Tok_i64\n"); break;
+    case Tok_f32                 : printf("Tok_f32\n"); break;
+    case Tok_f64                 : printf("Tok_f64\n"); break;
+    case Tok_char8               : printf("Tok_char8\n"); break;
+    case Tok_char16              : printf("Tok_char16\n"); break;
+    case Tok_char32              : printf("Tok_char32\n"); break;
+    case Tok_proc                : printf("Tok_proc\n"); break;
+    case Tok_include             : printf("Tok_include\n"); break;
+    case Tok_let                 : printf("Tok_let\n"); break;
+    case Tok_debug_print         : printf("Tok_debug_print\n"); break;
+    case Tok_struct              : printf("Tok_struct\n"); break;
+    case Tok_enum                : printf("Tok_enum\n"); break;
+    case Tok_if                  : printf("Tok_if\n"); break;
+    case Tok_else                : printf("Tok_else\n"); break;
+    case Tok_else_if             : printf("Tok_else_if\n"); break;
+    case Tok_while               : printf("Tok_while\n"); break;
+    case Tok_for                 : printf("Tok_for\n"); break;
+    case Tok_do                  : printf("Tok_do\n"); break;
+    default: __builtin_unreachable();
+    }
+}
 
-enum KeywordKind {
-    Keyword_proc,
-    Keyword_include,
-    Keyword_let,
-    Keyword_debug_print,
-    Keyword_struct,
-    Keyword_enum,
-    Keyword_if,
-    Keyword_else,
-    Keyword_while,
-    Keyword_for,
-    Keyword_do,
-};
+Lexer lexer_lex_file(const std::string& text) {
+    std::vector<Token> tokens;
 
-struct Token {
-    TokenKind token_kind;
+    int i = 0;
+    int n = text.length();
 
-    union {
-        KeywordKind keyword_kind;
-        TypeKind type_kind;
-    };
+    while (i < n) {
 
-    std::string literal;
+        char lookahead = text[i];
 
-    Token() {
-        token_kind = Tok_Illegal;
-        keyword_kind = Keyword_proc;     }
+        if (isspace(lookahead)){
+            i++;
+            continue;
+        }
 
-    Token(TokenKind k, const std::string& lit)
-        : token_kind(k), literal(lit)
-    {
-        keyword_kind = Keyword_proc;    }
-};
+        if (isIdentifierStart(lookahead)) {
+
+            std::string ident = "";
+
+            while (i < n && isIdentifierChar(text[i])) {
+                ident += text[i];
+                i++;
+            }
+
+            Token tok;
+
+            auto it = keywordTable.find(ident);
+
+            if (it != keywordTable.end())
+                tok.kind = it->second;
+            else
+                tok.kind = Tok_Identifier;
+
+            tok.literal = ident;
+            tokens.push_back(tok);
+        }
+
+        //else if for number checking
+        else if (isDigit(lookahead)) {
+            std::string number = "";
+            bool seenDot = false;
+
+            while (i < n) {
+                char c = text[i];
+
+                if (isDigit(c)) {
+                    number += c;
+                    i++;
+                }
+                else if (c == '.' && !seenDot) {
+                    seenDot = true;
+                    number += c;
+                    i++;
+                }
+                else break;
+            }
+
+            tokens.push_back(Token(Tok_Number, number));
+        }
+        //debug print fix - double quotations
+        else {
+            if (lookahead=='=' && i+1<n && text[i+1]=='=') {
+                tokens.push_back(Token(Tok_CompEqual,"=="));
+                i+=2; continue;
+                }
+            if (lookahead=='<' && i+1<n && text[i+1]=='=') {
+                tokens.push_back(Token(Tok_CompLessThanEqual,"<="));
+                i+=2; continue;
+            }
+            if (lookahead=='>' && i+1<n && text[i+1]=='=') {
+                tokens.push_back(Token(Tok_CompGreaterThanEqual,">="));
+                i+=2; continue;
+            }
+            if (lookahead=='!' && i+1<n && text[i+1]=='=') {
+                tokens.push_back(Token(Tok_CompNotEqual,"!="));
+                i+=2; continue;
+            }
+            switch (lookahead) {
+                case '"':tokens.push_back(Token(Tok_Dquote, "\""));break;
+                case '+': tokens.push_back(Token(Tok_Add, "+")); break;
+                case '-': tokens.push_back(Token(Tok_Sub, "-")); break;
+                case '(': tokens.push_back(Token(Tok_LParen,"(")); break;
+                case ')': tokens.push_back(Token(Tok_RParen,")")); break;
+                case '{': tokens.push_back(Token(Tok_LBrace,"{")); break;
+                case '}': tokens.push_back(Token(Tok_RBrace,"}")); break;
+                case '[': tokens.push_back(Token(Tok_LBracket,"[")); break;
+                case ']': tokens.push_back(Token(Tok_RBracket,"]")); break;
+                case ':': tokens.push_back(Token(Tok_Colon,":")); break;
+                case ',': tokens.push_back(Token(Tok_Comma,",")); break;
+                case ';': tokens.push_back(Token(Tok_Semicolon,";")); break;
+                case '=': tokens.push_back(Token(Tok_Equal,"=")); break;
+                case '@': tokens.push_back(Token(Tok_At,"@")); break;
+                case '*': tokens.push_back(Token(Tok_Star,"*")); break;
+                case '!': tokens.push_back(Token(Tok_Negate,"!")); break;
+                default: break;
+            }
+
+            i++;
+        }
+    }
+
+    Lexer l = {.tokens = tokens, .current = 0};
+    return l;
+}
+
+bool lexer_is_eof(Lexer& l)
+{
+    return (l.current >= l.tokens.size() || l.tokens[l.current].kind == Tok_EndOfFile);
+}
+
+Token lexer_current(Lexer& l)
+{
+    Token t{};
+    if (lexer_is_eof(l))
+        t.kind = Tok_EndOfFile;
+    else
+        t = l.tokens[l.current];
+
+    return t;
+}
+
+void lexer_move_next(Lexer& l)
+{
+    if (!lexer_is_eof(l))
+        l.current += 1;
+}
