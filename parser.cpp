@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstdio>
 
 #include "lexer.h"
 
@@ -51,6 +52,14 @@ enum Operator {
     Op_Mod,
 };
 
+std::unordered_map<Operator, std::string> op_string {
+    {Op_Add, "+"},
+    {Op_Sub, "-"},
+    {Op_Mul, "*"},
+    {Op_Div, "/"},
+    {Op_Mod, "%"},
+};
+
 enum OpAss {
     OpAss_Left,
     OpAss_Right,
@@ -61,38 +70,37 @@ enum ExprKind {
     Expr_Operator,
 };
 
+// a[] <- postfix unary
+// *a  <- prefix unary
+//
+// a[][][][] <- multiple
+// *******a  <- multiple
+// **a[4][2] <- combined
+
 struct Expr {
     ExprKind kind;
-    std::string blah;
     union {
-        TokenKind t; // (This is temporary) Expr_Atom
-        struct {     // Expr_Operator
+        Token t;            // Expr_Atom
+        struct {            // Expr_Operator
             Operator op;
             Expr *left;
+            Expr *middle;   // use in case of ternery operators
             Expr *right;
         };
     };
+
+    Expr(Token t)
+         : kind(Expr_Atom), t(t) {}
+
+    Expr(Expr *left, Expr *right, Operator op)
+         : kind(Expr_Operator), op(op), left(left), right(right) {}
 };
 
 Expr* parse_primary(Lexer& l);
 
-Expr *make_op(Expr *left, Expr *right, Operator op)
-{
-    Expr *e = new Expr();
-
-    e->kind = Expr_Operator;
-    e->op = op;
-    e->left = left;
-    e->right = right;
-
-    return e;
-}
-
-// a + b * c
-
 std::unordered_map<Operator, int> precedence_table = {
-    {Op_Add,  1},
-    {Op_Sub, 1},
+    {Op_Add,   1},
+    {Op_Sub,   1},
     {Op_Mul,   2},
     {Op_Div,   2},
     {Op_Mod,   3},
@@ -103,19 +111,16 @@ std::unordered_map<Operator, OpAss> opass_table = {
     {Op_Sub, OpAss_Left},
     {Op_Mul, OpAss_Left},
     {Op_Div, OpAss_Left},
-    {Op_Mod, OpAss_Left},
+    {Op_Mod, OpAss_Right},
 };
 
 std::unordered_map<TokenKind, Operator> op_table = {
-    {Tok_Plus, Op_Add},
-    {Tok_Minus, Op_Sub},
-    {Tok_Star, Op_Mul},
-    {Tok_FSlash, Op_Div},
+    {Tok_Plus,       Op_Add},
+    {Tok_Minus,      Op_Sub},
+    {Tok_Star,       Op_Mul},
+    {Tok_FSlash,     Op_Div},
     {Tok_Percentage, Op_Mod},
-
 };
-
-
 
 bool is_op(Token t){
     auto it = op_table.find(t.kind);
@@ -135,7 +140,7 @@ Expr* parse_expression(Lexer& l, int min_prec){
         }
         lexer_next(l);
 
-        int next_min_prec;
+        int next_min_prec = 0;
 
         switch (opass_table[op]) {
             case OpAss_Left:
@@ -146,10 +151,27 @@ Expr* parse_expression(Lexer& l, int min_prec){
 
         Expr* primary_rhs = parse_expression(l, next_min_prec);
 
-        primary_lhs = make_op(primary_lhs,primary_rhs, op );
+        primary_lhs = new Expr(primary_lhs, primary_rhs, op);
     }
 
     return primary_lhs;
+}
+
+void pretty_print_expr(Expr *root, const std::string& prefix, const std::string& prefix_to_pass)
+{
+    std::printf("%s", prefix.c_str());
+    switch (root->kind) {
+        case Expr_Atom:
+            std::printf("Atom: %s\n", root->t.literal.c_str());
+            break;
+        case Expr_Operator:
+            std::printf("Operator: %s\n", op_string[root->op].c_str());
+            pretty_print_expr(root->left, prefix_to_pass + "├──╴", prefix_to_pass + "│   ");
+            pretty_print_expr(root->right, prefix_to_pass + "└──╴", prefix_to_pass + "    ");
+            // pretty_print_expr(root->left, prefix_to_pass + "|-- ", prefix_to_pass + "|   ");
+            // pretty_print_expr(root->right, prefix_to_pass + "\\-- ", prefix_to_pass + "    ");
+            break;
+    }
 }
 
 Expr* parse_primary(Lexer& l){
@@ -157,10 +179,7 @@ Expr* parse_primary(Lexer& l){
     switch (lexer_current(l).kind) {
         case Tok_Identifier:
         case Tok_Number:
-            e = new Expr();
-            e->kind = Expr_Atom;
-            e->t = lexer_current(l).kind;
-            e->blah = lexer_current(l).literal;
+            e = new Expr(lexer_current(l));
             break;
         case Tok_LParen:
             lexer_next(l);
@@ -193,13 +212,8 @@ int main() {
 
     Lexer l = lexer_lex_file(source_code);
 
-    while (!lexer_is_eof(l)) {
-        lexer_print_token(lexer_current(l));
-        lexer_next(l);
-    }
-
-    l.current = 0;
     Expr *ast = parse_expression(l, 0);
+    pretty_print_expr(ast, "", "");
 
     return 0;
 }

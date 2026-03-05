@@ -209,7 +209,10 @@ Lexer lexer_lex_file(const std::string& text) {
                 case '/': tokens.push_back(Token(Tok_FSlash,"/")); break;
                 case '!': tokens.push_back(Token(Tok_Exclam,"!")); break;
                 case '%': tokens.push_back(Token(Tok_Percentage, "%")); break;
-                default: break;
+                default:
+                    std::string l{lookahead};
+                    tokens.push_back(Token(Tok_Illegal, l));
+                    break;
             }
 
             i++;
