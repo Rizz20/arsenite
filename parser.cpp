@@ -45,6 +45,7 @@ enum Operator {
     Op_Mul,
     Op_Div,
     Op_Mod,
+    Op_Assign,
 };
 
 std::unordered_map<Operator, std::string> op_string {
@@ -53,6 +54,7 @@ std::unordered_map<Operator, std::string> op_string {
     {Op_Mul, "*"},
     {Op_Div, "/"},
     {Op_Mod, "%"},
+    {Op_Assign, "="},
 };
 
 enum OpAss {
@@ -65,6 +67,7 @@ enum ExprKind {
     Expr_Operator,
     Expr_FuncCall,
     Expr_ArrIndex,
+    Expr_Assign,
 };
 
 enum AtomKind {
@@ -96,9 +99,13 @@ struct FuncCall {
 
 struct ArrIndex {
     std::string name;
-    std::vector<Expr*> args;
+    std::vector<Expr*> index;
 };
 
+struct AssignExpr{
+    std::string name;
+    Expr* right;
+};
 
 // a[] <- postfix unary
 // *a  <- prefix unary
@@ -119,8 +126,12 @@ struct Expr {
         };
         FuncCall func_call; // Expr_FuncCall
         ArrIndex arr_index; //Expr for array indexing
+        AssignExpr ass_expr; //Expr for assignment operation
 
     };
+
+    Expr (AssignExpr as)
+            :kind(Expr_Assign), ass_expr(as){}
 
     Expr (ArrIndex ar)
             :kind(Expr_ArrIndex), arr_index(ar){}
@@ -138,6 +149,7 @@ struct Expr {
 Expr* parse_primary(Lexer& l);
 
 std::unordered_map<Operator, int> precedence_table = {
+    {Op_Assign,0},
     {Op_Add,   1},
     {Op_Sub,   1},
     {Op_Mul,   2},
@@ -150,7 +162,8 @@ std::unordered_map<Operator, OpAss> opass_table = {
     {Op_Sub, OpAss_Left},
     {Op_Mul, OpAss_Left},
     {Op_Div, OpAss_Left},
-    {Op_Mod, OpAss_Right},
+    {Op_Mod, OpAss_Left},
+    {Op_Assign, OpAss_Right}
 };
 
 std::unordered_map<TokenKind, Operator> op_table = {
@@ -159,6 +172,7 @@ std::unordered_map<TokenKind, Operator> op_table = {
     {Tok_Star,       Op_Mul},
     {Tok_FSlash,     Op_Div},
     {Tok_Percentage, Op_Mod},
+    {Tok_Equal,      Op_Assign},
 };
 
 bool is_op(Token t){
@@ -190,10 +204,25 @@ Expr* parse_expression(Lexer& l, int min_prec){
 
         Expr* primary_rhs = parse_expression(l, next_min_prec);
 
-        primary_lhs = new Expr(primary_lhs, primary_rhs, op);
+        if(op == Op_Assign){
+            if(primary_lhs->kind == Expr_Atom && primary_lhs->at.kind == Atom_Variable){
+                AssignExpr as{.name = primary_lhs->at.value, .right = primary_rhs};
+                Expr* ep = new Expr(as);
+                return ep;
+            }
+            else{
+                std::cout<<"Horrible mistakes have been done"<<std::endl;
+                return nullptr;
+            }
+        }
+        else{
+            primary_lhs = new Expr(primary_lhs, primary_rhs, op);
+        }
+
     }
 
     return primary_lhs;
+
 }
 
 void pretty_print_expr(Expr *root, const std::string& prefix, const std::string& prefix_to_pass)
@@ -216,10 +245,24 @@ void pretty_print_expr(Expr *root, const std::string& prefix, const std::string&
             // pretty_print_expr(root->right, prefix_to_pass + "\\-- ", prefix_to_pass + "    ");
             break;
         case Expr_FuncCall:
-            std::cout<<"name: "<<root->func_call.name<<std::endl;
+            std::printf("FuncCall: %s\n", root->func_call.name.c_str());
+            for (long unsigned int i = 0; i < root->func_call.args.size(); i++) {
+                bool is_last = (i == root->func_call.args.size() - 1);
+                pretty_print_expr(root->func_call.args[i], prefix_to_pass + (is_last ? "└──╴" : "├──╴"), prefix_to_pass + (is_last ? "    " : "│   "));
+            }
+            break;
             break;
         case Expr_ArrIndex:
-            std::cout<<"arr_name "<<root->arr_index.name<<std::endl;
+            std::printf("ArrIndex: %s\n", root->arr_index.name.c_str());
+            for (long unsigned int i = 0; i < root->arr_index.index.size(); i++) {
+                bool is_last = (i == root->arr_index.index.size() - 1);
+                pretty_print_expr(root->arr_index.index[i], prefix_to_pass + (is_last ? "└──╴" : "├──╴"), prefix_to_pass + (is_last ? "    " : "│   ")
+                );
+            }
+            break;
+        case Expr_Assign:
+            std::printf("Assign: %s =\n", root->ass_expr.name.c_str());
+            pretty_print_expr(root->ass_expr.right, prefix_to_pass + "└──╴", prefix_to_pass + "    ");
             break;
 
     }
@@ -262,6 +305,22 @@ Expr* parse_primary(Lexer& l){
 
             break;
 
+        }
+
+        case Tok_At:
+        {
+            lexer_next(l);
+
+            Expr* Operand = parse_expression(l, 999);
+
+            FuncCall fn;
+            fn.name = "_at";
+            fn.args.push_back(Operand);
+
+
+            e = new Expr(fn);
+
+            break;
         }
 
         case Tok_Identifier:
@@ -339,7 +398,7 @@ Expr* parse_arr_index(Lexer& l, std::string name, std::vector<Expr*>& indexes){
         parse_arr_index(l,name, indexes);
     }
 
-    ArrIndex ar = ArrIndex{.name = name, .args = indexes};
+    ArrIndex ar = ArrIndex{.name = name, .index = indexes};
 
     Expr* arr = new Expr(ar);
 
