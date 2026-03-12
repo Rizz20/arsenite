@@ -1,9 +1,6 @@
-#include <iostream>
 #include <vector>
-#include <fstream>
 #include <unordered_map>
 #include <cctype>
-#include <utility>
 #include <stdio.h>
 
 #include "lexer.h"

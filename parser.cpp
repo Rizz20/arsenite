@@ -1,17 +1,12 @@
-#include <cstdarg>
 #include <cstdio>
 #include <iostream>
-#include <fstream>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <cstdio>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
-
 #include "lexer.h"
-
-#include "lexer.cpp"
 
 enum OpAss {
     OpAss_Left,
@@ -720,22 +715,3 @@ void pretty_print_expr(Expr *root, const std::string& prefix, const std::string&
             break;
     }
 }
-
-int main() {
-
-    std::ifstream file("main.at");
-    std::ostringstream ss;
-
-    ss << file.rdbuf();
-
-    std::string source_code = ss.str();
-
-    Lexer l = lexer_lex_file(source_code);
-
-    FunctionDefinition f{};
-    if (!parse_function_definition(l, f))
-        std::cout << "Error while parsing function definition\n";
-
-    return 0;
-}
-
