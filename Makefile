@@ -4,7 +4,7 @@
 
 CXX = g++
 
-CXXFLAGS = -Wall -Wextra -Wswitch -ggdb -I./
+CXXFLAGS = -Wall -Wextra -Wswitch -ggdb -I./ 
 
 TARGET = compiler
 

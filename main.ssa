@@ -1,0 +1,13 @@
+export function w $main(l %argc,l %argv) {
+@start
+  %i=w copy 1
+  %rem=w copy 5
+
+@loop
+  %i=w add %i,1
+  %rem=w sub %rem,1
+  jnz %rem,@loop,@loop_exit
+
+@loop_exit
+  ret 0
+}

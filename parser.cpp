@@ -222,7 +222,7 @@ struct Statement {
     : kind(Statement_If), if_else_statement(s) {}
 
     Statement(ReturnStatement *s)
-    : kind(Statement_Expression), return_statement(s) {}
+    : kind(Statement_Return), return_statement(s) {}
 };
 
 struct Parameter {
