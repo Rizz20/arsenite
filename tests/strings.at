@@ -1,0 +1,5 @@
+proc main(argc: u64, argv: []string) -> u64 {
+    printf("Hello, Arsenite!\n");
+    printf("Multiple %s strings: %d, %d\n", "and", 1, 2);
+    return 0;
+}

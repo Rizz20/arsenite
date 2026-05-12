@@ -239,6 +239,25 @@ Lexer lexer_lex_file(const std::string& text) {
 
             tokens.push_back(Token(Tok_Number, number));
 
+        } else if (lookahead == '"') {
+            i++;
+            std::string s = "";
+            while (i < n && text[i] != '"') {
+                if (text[i] == '\\' && i + 1 < n) {
+                    i++;
+                    if (text[i] == 'n') s += '\n';
+                    else if (text[i] == 't') s += '\t';
+                    else if (text[i] == '"') s += '"';
+                    else if (text[i] == '\\') s += '\\';
+                    else s += text[i];
+                } else {
+                    s += text[i];
+                }
+                i++;
+            }
+            if (i < n) i++; // skip closing quote
+            tokens.push_back(Token(Tok_StringLit, s));
+            continue;
         } else {
             if (lookahead == '=' && i+1< n && text[i+1] == '=') {
                 tokens.push_back(Token(Tok_CompEqual, "=="));

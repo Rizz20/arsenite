@@ -1,7 +1,7 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
-#include "lexer.h"
+#include "lexer.hpp"
 #include <cstdint>
 #include <optional>
 #include <string>

@@ -1,0 +1,4 @@
+proc main(argc: u64, argv: []string) -> u64 {
+    let x: u64 = 42;
+    return x;
+}

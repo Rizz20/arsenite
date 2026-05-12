@@ -3,5 +3,6 @@ proc main(argc: u64, argv: []string) -> u64 {
     let b: u32 = 4;
     let c: u32;
     c = a+b;
+    printf("Result: %d\n", c);
     return 0;
 }

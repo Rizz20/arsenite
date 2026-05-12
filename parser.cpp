@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
-#include "lexer.h"
+#include "lexer.hpp"
 
 enum OpAss {
     OpAss_Left,
@@ -323,7 +323,7 @@ bool parse_type_declaration(Lexer& l, Type& t)
     case Tok_char8:  t.type_id = DefaultType_char8;  break;
     case Tok_char16: t.type_id = DefaultType_char16; break;
     case Tok_char32: t.type_id = DefaultType_char32; break;
-    case Tok_string: t.type_id = DefaultTypeCount;   break;
+    case Tok_string: t.type_id = DefaultType_string; break;
     default: return false;
     }
 
@@ -564,6 +564,13 @@ Expr* parse_primary(Lexer& l){
                 break;
             }
 
+        }
+        case Tok_StringLit:
+        {
+            Atom a {.kind = Atom_Constant, .value = lexer_current(l).literal, .type {.type_id = DefaultType_string, .mods = {}}};
+            e = new Expr(a);
+            lexer_next(l);
+            break;
         }
         case Tok_Number:
         {

@@ -4,7 +4,7 @@
 
 CXX = g++
 
-CXXFLAGS = -Wall -Wextra -Wswitch -ggdb -I./ 
+CXXFLAGS = -Wall -Wextra -Wswitch -ggdb -I./ $(shell llvm-config --cxxflags)
 
 TARGET = compiler
 
@@ -13,7 +13,7 @@ OBJS = lexer.o parser.o codegen.o
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) $(OBJS) -o $(TARGET) $(CXXFLAGS)
+	$(CXX) $(OBJS) -o $(TARGET) $(CXXFLAGS) $(shell llvm-config --ldflags --system-libs --libs core native)
 
 lexer.o: lexer.cpp lexer.hpp
 	$(CXX) -c lexer.cpp $(CXXFLAGS)

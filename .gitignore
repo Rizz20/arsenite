@@ -10,3 +10,7 @@ main
 lexer.c
 parser
 lexer
+*.o
+*.bak
+main_exec
+compiler
